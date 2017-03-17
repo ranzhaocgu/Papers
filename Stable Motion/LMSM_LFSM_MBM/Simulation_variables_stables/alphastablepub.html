@@ -1,0 +1,1028 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+
+
+   
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+   
+      <!--
+This HTML is auto-generated from an M-file.
+To make changes, update the M-file and republish this document.
+      -->
+      <title>Alpha-Stable distributions in MATLAB</title>
+      <meta name="generator" content="MATLAB 7.7">
+      <meta name="date" content="2009-11-11">
+      <meta name="m-file" content="alphastablepub"><style type="text/css">
+
+body {
+  background-color: white;
+  margin:10px;
+}
+
+h1 {
+  color: #990000; 
+  font-size: x-large;
+}
+
+h2 {
+  color: #990000;
+  font-size: medium;
+}
+
+/* Make the text shrink to fit narrow windows, but not stretch too far in 
+wide windows. */ 
+p,h1,h2,div.content div {
+  max-width: 600px;
+  /* Hack for IE6 */
+  width: auto !important; width: 600px;
+}
+
+pre.codeinput {
+  background: #EEEEEE;
+  padding: 10px;
+}
+@media print {
+  pre.codeinput {word-wrap:break-word; width:100%;}
+} 
+
+span.keyword {color: #0000FF}
+span.comment {color: #228B22}
+span.string {color: #A020F0}
+span.untermstring {color: #B20000}
+span.syscmd {color: #B28C00}
+
+pre.codeoutput {
+  color: #666666;
+  padding: 10px;
+}
+
+pre.error {
+  color: red;
+}
+
+p.footer {
+  text-align: right;
+  font-size: xx-small;
+  font-weight: lighter;
+  font-style: italic;
+  color: gray;
+}
+
+  </style></head><body>
+      <div class="content">
+         <h1>Alpha-Stable distributions in MATLAB</h1>
+         <!--introduction-->
+         <p>The following gives a brief introduction to the Levy 
+alpha-stable distribtuion and some MATLAB functions I've written 
+pertaining
+            to this distribtuion.  There are several issues which make 
+dealing with these distribtuions difficult, including infinite
+            means and variances, and the fact that the pdf or cdf cannot
+ be written in closed form.
+         </p>
+         <p>MATLAB does not currently have built-in support for this distribution, but there is third party software which has several
+            well-developed methods. This software is not free (in general). Information can be found <a href="http://www.mathworks.com/products/connections/product_detail/product_35730.html">here</a>.
+         </p>
+         <p>Alpha-stable distributions arise naturally in the study of 
+heavy-tailed distribtuions, and have found applications in economics
+            and physics as models of rare, but extreme events (such as 
+earthquakes or stock market crashes).  I expect these models to
+            grow in popularity since many believe that some of our 
+recent financial troubles happend because analysts limited themselves
+            to Gaussian models (which do not have heavy tails).
+         </p>
+         <p>We'll start with some background about alpha-stable distributions, and then go through the functions I've written. An excellent
+            introduction to these distributions is [ST].
+         </p>
+	<p> Download these functions <a href="http://math.bu.edu/people/mveillet/research.html">here</a>
+
+
+	 <!--/introduction-->
+         </p><h2>Contents</h2>
+         <div>
+            <ul>	       
+	       <li><a href="#1">Note on Parameterization</a></li>
+               <li><a href="#2">Introduction to the alpha-stable distribution</a></li>
+               <li><a href="#3">STBLRND</a></li>
+               <li><a href="#7">STBLPDF</a></li>
+               <li><a href="#10">STBLCDF</a></li>
+               <li><a href="#11">STBLINV</a></li>
+               <li><a href="#14">STBLFIT</a></li>
+               <li><a href="#15">Example: Investigate the distribution of a sum of Pareto random variables</a></li>
+               <li><a href="#17">References</a></li>
+            </ul>
+         </div>
+         <h2>Note on Parameterization<a name="1"></a></h2>
+         <p>One of the most frustrating issues in dealing with 
+alpha-stable distribtuions is that its parameterization is not 
+consistent
+            across the literature (there are over half a dozen 
+parameterizations).  The parameterization we choose here is consistent
+            with G Samorodnitsky's and MS Taqqu's 1994 book.  The most 
+common way to specify a parameterization is to look at the 
+characteristic
+            function of the alpha-stable random variable, which we do in
+ the next section.
+         </p>
+         <p>One further annoyance is that the <i>names</i> of the 4 parameters are also inconsistent.  We choose the letters <img src="alphastablepub_fichiers/alphastablepub_eq46132.png" alt="$\alpha,\beta,\gamma$">, and <img src="alphastablepub_fichiers/alphastablepub_eq71031.png" alt="$\delta$">.  The letters <img src="alphastablepub_fichiers/alphastablepub_eq87919.png" alt="$\alpha$"> and <img src="alphastablepub_fichiers/alphastablepub_eq42727.png" alt="$\beta$"> are used almost everywhere you look, while the other two parameters are almost <i>always</i> different.  We chose <img src="alphastablepub_fichiers/alphastablepub_eq41477.png" alt="$\gamma$"> and <img src="alphastablepub_fichiers/alphastablepub_eq71031.png" alt="$\delta$"> as opposed to the popular <img src="alphastablepub_fichiers/alphastablepub_eq24873.png" alt="$\sigma$"> and <img src="alphastablepub_fichiers/alphastablepub_eq68803.png" alt="$\mu$"> since these two letters usually mean standard deviation and mean (which is not accurate in the case of stable distributions).
+         </p>
+         <p>NOTE: Because MATLAB interprets "gamma" as the gamma function (which is used to compute the pdf an alpha-stable dist.), we
+            use "gam" in the code instead.
+         </p>
+         <h2>Introduction to the alpha-stable distribution<a name="2"></a></h2>
+         <p>The alpha-stable distribution is a four-parameter family of distributions and is (usually) denoted by <img src="alphastablepub_fichiers/alphastablepub_eq07061.png" alt="$S(\alpha,\beta,\gamma,\delta)$">.  The first parameter <img src="alphastablepub_fichiers/alphastablepub_eq67893.png" alt="$\alpha \in (0,2]$"> is called the <i>characteristic exponent</i>, and describes the tail of the distribution.  The second, <img src="alphastablepub_fichiers/alphastablepub_eq32153.png" alt="$\beta \in [-1,1]$"> is the <i>skewness</i>, and as the name implies, specifies if the distribution is right- (<img src="alphastablepub_fichiers/alphastablepub_eq76915.png" alt="$\beta &gt; 0$">) or left- (<img src="alphastablepub_fichiers/alphastablepub_eq75308.png" alt="$\beta &lt; 0$">) skewed.  The last two parameters are the <i>scale</i>, <img src="alphastablepub_fichiers/alphastablepub_eq08866.png" alt="$\gamma &gt; 0$">, and the <i>location</i> <img src="alphastablepub_fichiers/alphastablepub_eq88041.png" alt="$\delta \in R$">.  One can think of these two as being similar to the variance and mean in the normal distribution in the following sense
+            - if <img src="alphastablepub_fichiers/alphastablepub_eq27343.png" alt="$Z \sim S(\alpha,\beta,1,0)$">, then if <img src="alphastablepub_fichiers/alphastablepub_eq47709.png" alt="$\alpha \neq 1$">, <img src="alphastablepub_fichiers/alphastablepub_eq68478.png" alt="$\gamma Z + \delta \sim S(\alpha,\beta,\gamma,\delta)$">.  The variable <img src="alphastablepub_fichiers/alphastablepub_eq14833.png" alt="$Z$"> is usually called a <i>standard</i> alpha-stable random variable (but keep in mind the word "standard" depends on the choice of parameterization!).
+         </p>
+         <p>The family of alpha-stable distributions is a rich class, and includes the following distributions as subclasses:</p>
+         <p>(1) The Gaussian distribution <img src="alphastablepub_fichiers/alphastablepub_eq28361.png" alt="$N(\mu,\sigma^2)$"> is given by <img src="alphastablepub_fichiers/alphastablepub_eq21595.png" alt="$S(2,\beta,\frac{\sigma}{\sqrt{2}},\mu)$">.  Notice <img src="alphastablepub_fichiers/alphastablepub_eq42727.png" alt="$\beta$"> does not matter in this case.
+         </p>
+         <p>(2) The <a href="http://en.wikipedia.org/wiki/Cauchy_distribution">Cauchy distribution</a> with scale <img src="alphastablepub_fichiers/alphastablepub_eq41477.png" alt="$\gamma$"> and location <img src="alphastablepub_fichiers/alphastablepub_eq71031.png" alt="$\delta$"> is given by <img src="alphastablepub_fichiers/alphastablepub_eq90801.png" alt="$S(1,0,\gamma,\delta)$">.
+         </p>
+         <p>(3) The <a href="http://en.wikipedia.org/wiki/Levy_distribution">Levy distribution</a> (a.k.a Inverse-Gaussian or Pearson V), with scale <img src="alphastablepub_fichiers/alphastablepub_eq41477.png" alt="$\gamma$"> and location <img src="alphastablepub_fichiers/alphastablepub_eq71031.png" alt="$\delta$"> is given by <img src="alphastablepub_fichiers/alphastablepub_eq60211.png" alt="$S(1/2,1,\gamma,\delta)$">.
+         </p>
+         <p>With the exception of the above 3 cases, the density function of an alpha-stable random variable cannot be given in closed
+            form.  However, the characteristic function can always be given. Let <img src="alphastablepub_fichiers/alphastablepub_eq00264.png" alt="$X \sim S(\alpha,\beta,\gamma,\delta)$">. The parameterization we use here corresponds to the following form of the characteristic function.  For <img src="alphastablepub_fichiers/alphastablepub_eq47709.png" alt="$\alpha \neq 1$">, we have
+         </p>
+         <p><img src="alphastablepub_fichiers/alphastablepub_eq01861.png" alt="$\phi(t) = E \exp(i t X) = \exp\left( -\gamma^\alpha |t|^\alpha [ 1 - i \beta sign(t) \tan(\frac{\pi \alpha}{2} )] + i \delta t \right)$">.
+         </p>
+         <p>and for <img src="alphastablepub_fichiers/alphastablepub_eq44066.png" alt="$\alpha = 1$">,
+         </p>
+         <p><img src="alphastablepub_fichiers/alphastablepub_eq67165.png" alt="$\phi(t) = E \exp(i t X) = \exp \left( - \gamma |t| (1 + i \beta sign(t) \frac{2}{\pi} \log|t| ) + i \delta t \right)$">.
+         </p>
+         <p>One of the nicest properties of alpha-stable distribution is that they generalize the classical central limit theorem.  Recall
+            that if <img src="alphastablepub_fichiers/alphastablepub_eq98827.png" alt="$X,X_1,X_2,\dots$"> form a sequence of i.i.d. random variables with finite variance, then the quantity
+         </p>
+         <p><img src="alphastablepub_fichiers/alphastablepub_eq63963.png" alt="$\frac{ \sum_{i=1}^n X_i - EX}{ \sqrt{ var(X) n} }$"></p>
+         <p>converges in distribution to a standard normal random variable as <img src="alphastablepub_fichiers/alphastablepub_eq35498.png" alt="$n \rightarrow \infty$">, which we saw above is the same as <img src="alphastablepub_fichiers/alphastablepub_eq39138.png" alt="$S(2,0,\frac{1}{\sqrt{2}},0)$">.  Now, if you remove the assumption that the <img src="alphastablepub_fichiers/alphastablepub_eq03598.png" alt="$X$">'s have finite variance, but can still find a sequence of normalizing factors <img src="alphastablepub_fichiers/alphastablepub_eq11164.png" alt="$a_n$"> and <img src="alphastablepub_fichiers/alphastablepub_eq59041.png" alt="$b_n$"> such that
+         </p>
+         <p><img src="alphastablepub_fichiers/alphastablepub_eq97778.png" alt="$\frac{ \sum_{i=1}^n X_i - a_n}{ b_n }$"></p>
+         <p>converges in distribution to some non-degenerate random variable <img src="alphastablepub_fichiers/alphastablepub_eq17977.png" alt="$Y$">,  then <img src="alphastablepub_fichiers/alphastablepub_eq17977.png" alt="$Y$"> must live in the family of alpha-stable distributions!  For an example of this, see the example section below.
+         </p>
+         <p>This is a reason many think these distributions should be 
+used in models of stock prices.  If you view the price of a stock
+            as a accumulation of jumps, and if you assume these jumps 
+are appoximately i.i.d. and come from a heavy-tailed distribution
+            (with infinite variance) then this result says you should 
+expect the limiting behavior of the stock price to have an alpha-stable
+            law (this is a bit of an over simplification, but hopefully 
+you get the idea of how these distributions can arise "naturally").
+         </p>
+         <h2>STBLRND<a name="3"></a></h2>
+         <p>STBLERND generates random numbers form the Levy alpha-stable distribution.  This function is called in any one of the following
+            ways:
+         </p><pre> X = stblrnd(alpha,beta,gamma,delta) % Generates a single S(alpha,beta,gamma,delta) random variable.
+ X = stblrnd(alpha,beta,gamma,delta,M) %Generates an M by M matrix of S(alpha,beta,gamma,delta) random variables.
+ X = stblrnd(alpha,beta,gamma,delta,M,N,..) %Generates an M by N by.. array of S(alpha,beta,gamma,delta) random variables .
+ X = stblrnd(alpha,beta,gamma,delta,[M,N,..]) %Generates an M by N by..array of S(alpha,beta,gamma,delta) random variables .</pre><p>The inputs alpha,beta,gamma and delta must be scalars and lie in their appropriate ranges.  If the parameter choice corresponds
+            to a special distribution (Gaussian, Cauchy, Levy), then a faster method is used.
+         </p>
+         <p>The algorithm used in STBLRND is based on the methods found in [CMS] and [WW].</p>
+         <p>Example: Generate 1000 random samples from the symmetric alpha-stable distribution with <img src="alphastablepub_fichiers/alphastablepub_eq43978.png" alt="$\alpha = 1.5,$"> and make a histogram
+         </p><pre class="codeinput">X = stblrnd(1.5,0,1,0,1000,1);
+hist(X)
+</pre><img src="alphastablepub_fichiers/alphastablepub_01.png" alt="" hspace="5" vspace="5"> <p>What you (probably) see is characteristic of stable distributions, and is the reason they are useful.  We see here a lot of
+            samples falling near the origin, and a few rare samples which are large in magnitude.
+         </p>
+         <h2>STBLPDF<a name="7"></a></h2>
+         <p>STBLPDF computes the pdf of the alpha-stable distribution.  This function is called as</p><pre>  p = stblpdf(x,alpha,beta,gamma,delta)  % Computes the pdf of the S(alpha,beta,gamma,delta) distribution at the values in x.</pre><p>x can be any sized array, and alpha,beta,gamma and delta must be scalars. The output p is the same size as x</p>
+         <p>STBLEPDF also accepts one or both of the following options</p><pre>  p = stblpdf(x,alpha,beta,gamma,delta,'quick') % Uses a faster, but less accurate algorithm.  Useful for plotting.
+  p = stblpdf(x,alpha,beta,gamma,delta,TOL)  % Computes the pdf using an absolute error tolerance of TOL.</pre><p>By default, stblpdf uses a TOL of 1e-12 for the full algorithm, and 1e-6 for the 'quick' algorithm.</p>
+         <p>The algorithm for stblpdf comes down to computing the 
+numerical integrals found in [JPN]. In this code, I used MATLAB's QUADV
+            function, which is vectorized quadrature.  It is very fast 
+and does an excellent job.  For large values of x, the integrand
+            we must compute is mostly zero, except for a very thin peak,
+ which QUADV might miss.  To avoid this, the full algorithm locates
+            this peak using a bisection method, and then calls QUADV 
+twice, once to compute to left of the peak, and once to compute to
+            the right of the peak.  The 'quick' algorithm skips the step
+ of locationg the peak and only calls QUADV once.
+         </p>
+         <p>Example 1:  Plot alpha-stable densities</p><pre class="codeinput">figure(1)
+x = -5:.01:5;
+beta = 0;
+gam = 1;
+delta = 0;
+plot( x , stblpdf(x,.5,beta,gam,delta,<span class="string">'quick'</span>),<span class="keyword">...</span>
+  x , stblpdf(x,.75,beta,gam,delta,<span class="string">'quick'</span>),<span class="keyword">...</span>
+  x , stblpdf(x,1,beta,gam,delta,<span class="string">'quick'</span>),<span class="keyword">...</span>
+  x , stblpdf(x,1.25,beta,gam,delta,<span class="string">'quick'</span>),<span class="keyword">...</span>
+  x , stblpdf(x,1.5,beta,gam,delta,<span class="string">'quick'</span>) )
+axis([-5 5 0 .7]);
+title(<span class="string">'Symmetric \alpha-stable densities, \beta = 0, \gamma = 1, \delta = 0'</span>);
+legend(<span class="string">'\alpha = 0.5'</span>,<span class="keyword">...</span>
+    <span class="string">'\alpha = 0.75'</span>,<span class="keyword">...</span>
+    <span class="string">'\alpha = 1.0'</span>,<span class="keyword">...</span>
+    <span class="string">'\alpha = 1.25'</span>,<span class="keyword">...</span>
+    <span class="string">'\alpha = 1.5'</span> )
+
+
+
+figure(2)
+x = -5:.01:5;
+beta = 1;
+gam = 1;
+delta = 0;
+plot( x , stblpdf(x,.5,beta,gam,delta,<span class="string">'quick'</span>),<span class="keyword">...</span>
+  x , stblpdf(x,.75,beta,gam,delta,<span class="string">'quick'</span>),<span class="keyword">...</span>
+  x , stblpdf(x,1,beta,gam,delta,<span class="string">'quick'</span>),<span class="keyword">...</span>
+  x , stblpdf(x,1.25,beta,gam,delta,<span class="string">'quick'</span>),<span class="keyword">...</span>
+  x , stblpdf(x,1.5,beta,gam,delta,<span class="string">'quick'</span>) )
+axis([-5 5 0 .6]);
+title(<span class="string">'Skewed \alpha-stable densities, \beta = 0.5,\gamma = 1, \delta = 0'</span>);
+legend(<span class="string">'\alpha = 0.5'</span>,<span class="keyword">...</span>
+    <span class="string">'\alpha = 0.75'</span>,<span class="keyword">...</span>
+    <span class="string">'\alpha = 1.0'</span>,<span class="keyword">...</span>
+    <span class="string">'\alpha = 1.25'</span>,<span class="keyword">...</span>
+    <span class="string">'\alpha = 1.5'</span> )
+</pre><img src="alphastablepub_fichiers/alphastablepub_02.png" alt="" hspace="5" vspace="5"> <img src="alphastablepub_fichiers/alphastablepub_03.png" alt="" hspace="5" vspace="5"> <p>Example 2: Check accuracy for large x.  Eventually, the 'quick' option will fail to give a good result.  The red dashed line
+            in the plot below is a known, closed form asymptotic approximation which is only valid for large x.
+         </p><pre class="codeinput">x = 10.^(-2:.25:7);
+alpha = 1.5;
+beta = 0;
+gam = 1;
+delta = 0;
+C = (1 - alpha)/(gamma(2 - alpha)*cos(pi*alpha/2));
+loglog( x , stblpdf( x,alpha,beta,gam,delta,<span class="string">'quick'</span>), <span class="string">'g-*'</span>, <span class="keyword">...</span>
+        x , stblpdf( x,alpha,beta,gam,delta),         <span class="string">'b-o'</span>, <span class="keyword">...</span>
+        x , C/2 * alpha * x.^(-alpha - 1),            <span class="string">'r--'</span>)
+legend(<span class="string">'quick'</span>,<span class="string">'full'</span>, <span class="string">'asymptotic formula'</span>)
+title(<span class="string">'Comparison of "quick" option to full algorithm for large x'</span> )
+</pre><img src="alphastablepub_fichiers/alphastablepub_04.png" alt="" hspace="5" vspace="5"> <p>We see the 'quick' option matches the full algorithm out until x ~ 10^5, then it starts to grossly underestimate the pdf.
+             Meanwhile, the full algorithm continues to do an excellent job well into the tails of the pdf.
+         </p>
+         <h2>STBLCDF<a name="10"></a></h2>
+         <p>STBLCDF computes the cdf of the alpha-stable distribution.  This function is called as</p><pre>  F = stblcdf(x,alpha,beta,gamma,delta)  % Computes the cdf of the S(alpha,beta,gamma,delta) distribution at the values in x.</pre><p>x can be any sized array, and alpha,beta,gamma and delta must be scalars. The output F is the same size as x</p>
+         <p>STBLECDF also accepts the following option</p><pre>  p = stblcdf(x,alpha,beta,gamma,delta,TOL)  % Computes the cdf using an absolute error tolerance of TOL.</pre><p>The default for TOL is 1e-8.</p>
+         <p>Similar to STBLPDF, the algorithm for STBLCDF comes down to 
+computing the integrals found in [JPN].  Again, MATLAB's QUADV
+            function was used for this.  to avoid numerical 
+instabilities in the integrand, I truncated the endpoint of the 
+integrand
+            slightly.
+         </p>
+         <p>Example:  Plot alpha-stable cdfs</p><pre class="codeinput">figure(3)
+x = -5:.01:5;
+  beta = 0;
+  gam = 1;
+  delta = 0;
+  plot(x,  stblcdf(x,.1,beta,gam,delta),<span class="keyword">...</span>
+      x , stblcdf(x,.5,beta,gam,delta),<span class="keyword">...</span>
+      x , stblcdf(x,.75,beta,gam,delta),<span class="keyword">...</span>
+      x , stblcdf(x,1,beta,gam,delta),<span class="keyword">...</span>
+      x , stblcdf(x,1.25,beta,gam,delta),<span class="keyword">...</span>
+      x , stblcdf(x,1.5,beta,gam,delta) )
+ axis([-5 5 0 1]);
+ title(<span class="string">'Symmetric \alpha-stable CDFs, \beta = 0, \gamma = 1, \delta = 0'</span>);
+ legend(<span class="string">'\alpha = 0.1'</span>,<span class="keyword">...</span>
+        <span class="string">'\alpha = 0.5'</span>,<span class="keyword">...</span>
+        <span class="string">'\alpha = 0.75'</span>,<span class="keyword">...</span>
+        <span class="string">'\alpha = 1.0'</span>,<span class="keyword">...</span>
+        <span class="string">'\alpha = 1.25'</span>,<span class="keyword">...</span>
+        <span class="string">'\alpha = 1.5'</span>,<span class="keyword">...</span>
+        <span class="string">'Location'</span>,<span class="string">'northwest'</span>);
+
+
+figure(4)
+  x = -5:.01:5;
+  beta = .5;
+  gam = 1;
+  delta = 0;
+  quick = true;
+  plot( x,  stblcdf(x,.1,beta,gam,delta),<span class="keyword">...</span>
+        x , stblcdf(x,.5,beta,gam,delta),<span class="keyword">...</span>
+      x , stblcdf(x,.75,beta,gam,delta),<span class="keyword">...</span>
+      x , stblcdf(x,1,beta,gam,delta),<span class="keyword">...</span>
+      x , stblcdf(x,1.25,beta,gam,delta),<span class="keyword">...</span>
+      x , stblcdf(x,1.5,beta,gam,delta) )
+ axis([-5 5 0 1]);
+ title(<span class="string">'Skewed \alpha-stable CDFs, \beta = 0.5, \gamma = 1, \delta = 0'</span>);
+ legend(<span class="string">'\alpha = 0.1'</span>,<span class="keyword">...</span>
+        <span class="string">'\alpha = 0.5'</span>,<span class="keyword">...</span>
+        <span class="string">'\alpha = 0.75'</span>,<span class="keyword">...</span>
+        <span class="string">'\alpha = 1.0'</span>,<span class="keyword">...</span>
+        <span class="string">'\alpha = 1.25'</span>,<span class="keyword">...</span>
+        <span class="string">'\alpha = 1.5'</span>,<span class="keyword">...</span>
+        <span class="string">'Location'</span>,<span class="string">'northwest'</span>);
+</pre><img src="alphastablepub_fichiers/alphastablepub_05.png" alt="" hspace="5" vspace="5"> <img src="alphastablepub_fichiers/alphastablepub_06.png" alt="" hspace="5" vspace="5"> <h2>STBLINV<a name="11"></a></h2>
+         <p>STBLINV computes the inverse alpha-stable CDF.  This function is called as</p><pre>  X = stblinv(u,alpha,beta,gam,delta)</pre><p>u can be any sized array, and alpha,beta,gam and delta must be scalars. The output x will be the same size as u.</p>
+         <p>The algorithm used to compute stblinv is one that I cooked 
+up - it uses a combination of Newton's method and the bisection
+            method, together with the functions stblcdf and stblpdf, to 
+solve the equation F(X) = U for X, where F is the cdf of an alpha-stable
+            distribution.  For starting values, I calculated a large 
+table of exact values for .1 &lt; alpha &lt; 2, 0&lt;=beta &lt;= 1 and 
+.1 &lt; u
+            &lt; .9.  For u outside the range .1&lt;u&lt;.9, I used the 
+asymptotic expression for the cdf.
+         </p>
+         <p>Example 1: Plot some alpha-stable inverse cdf's</p><pre class="codeinput">figure(4)
+u = .01:.01:.99;
+  beta = 0;
+  gam = 1;
+  delta = 0;
+  plot(u , stblinv(u,.5,beta,gam,delta),<span class="keyword">...</span>
+      u , stblinv(u,.75,beta,gam,delta),<span class="keyword">...</span>
+      u , stblinv(u,1,beta,gam,delta),<span class="keyword">...</span>
+      u , stblinv(u,1.25,beta,gam,delta),<span class="keyword">...</span>
+      u , stblinv(u,1.5,beta,gam,delta) )
+ axis([0 1 -2 2]);
+ title(<span class="string">'Symmetric inverse \alpha-stable CDFs, \beta = 0, \gamma = 1, \delta = 0'</span>);
+ legend(<span class="string">'\alpha = 0.5'</span>,<span class="keyword">...</span>
+        <span class="string">'\alpha = 0.75'</span>,<span class="keyword">...</span>
+        <span class="string">'\alpha = 1.0'</span>,<span class="keyword">...</span>
+        <span class="string">'\alpha = 1.25'</span>,<span class="keyword">...</span>
+        <span class="string">'\alpha = 1.5'</span>,<span class="keyword">...</span>
+        <span class="string">'Location'</span>,<span class="string">'northwest'</span>);
+
+
+figure(5)
+u = .01:.01:.99;
+  beta = .5;
+  gam = 1;
+  delta = 0;
+  plot( u , stblinv(u,.5,beta,gam,delta),<span class="keyword">...</span>
+      u , stblinv(u,.75,beta,gam,delta),<span class="keyword">...</span>
+      u , stblinv(u,1,beta,gam,delta),<span class="keyword">...</span>
+      u , stblinv(u,1.25,beta,gam,delta),<span class="keyword">...</span>
+      u , stblinv(u,1.5,beta,gam,delta) )
+ axis([0 1 -2 2]);
+ title(<span class="string">'Skewed inverse \alpha-stable CDFs, \beta = .5, \gamma = 1, \delta = 0'</span>);
+ legend( <span class="string">'\alpha = 0.5'</span>,<span class="keyword">...</span>
+        <span class="string">'\alpha = 0.75'</span>,<span class="keyword">...</span>
+        <span class="string">'\alpha = 1.0'</span>,<span class="keyword">...</span>
+        <span class="string">'\alpha = 1.25'</span>,<span class="keyword">...</span>
+        <span class="string">'\alpha = 1.5'</span>,<span class="keyword">...</span>
+        <span class="string">'Location'</span>,<span class="string">'northwest'</span>);
+</pre><img src="alphastablepub_fichiers/alphastablepub_07.png" alt="" hspace="5" vspace="5"> <img src="alphastablepub_fichiers/alphastablepub_08.png" alt="" hspace="5" vspace="5"> <p>Example 2: Check that we really are inverting the alpha-stable CDF</p><pre class="codeinput">u = [.01:.01:.99];
+alpha = 1.5;
+beta = .5;
+gam = 1;
+delta = 0;
+w = stblcdf( stblinv( u,alpha,beta,gam,delta),alpha,beta,gam,delta) <span class="comment">% This should return u.</span>
+check = all( abs(w-u) &lt; 1e-6 )
+</pre><pre class="codeoutput">w =
+  Columns 1 through 18
+    0.0100    0.0200    0.0300    0.0400    0.0500    0.0600    0.0700    0.0800    0.0900    0.1000    0.1100    0.1200    0.1300    0.1400    0.1500    0.1600    0.1700    0.1800
+  Columns 19 through 36
+    0.1900    0.2000    0.2100    0.2200    0.2300    0.2400    0.2500    0.2600    0.2700    0.2800    0.2900    0.3000    0.3100    0.3200    0.3300    0.3400    0.3500    0.3600
+  Columns 37 through 54
+    0.3700    0.3800    0.3900    0.4000    0.4100    0.4200    0.4300    0.4400    0.4500    0.4600    0.4700    0.4800    0.4900    0.5000    0.5100    0.5200    0.5300    0.5400
+  Columns 55 through 72
+    0.5500    0.5600    0.5700    0.5800    0.5900    0.6000    0.6100    0.6200    0.6300    0.6400    0.6500    0.6600    0.6700    0.6800    0.6900    0.7000    0.7100    0.7200
+  Columns 73 through 90
+    0.7300    0.7400    0.7500    0.7600    0.7700    0.7800    0.7900    0.8000    0.8100    0.8200    0.8300    0.8400    0.8500    0.8600    0.8700    0.8800    0.8900    0.9000
+  Columns 91 through 99
+    0.9100    0.9200    0.9300    0.9400    0.9500    0.9600    0.9700    0.9800    0.9900
+check =
+     1
+</pre><h2>STBLFIT<a name="14"></a></h2>
+         <p>STBLFIT fits an alpha-stable distribution to a data set.  The function is called as</p><pre> p = stblfit(X)</pre><p>where X is the data set to which you want to fit a stable distribution. The output p will be a column vector containing the
+            4 parameters.
+         </p>
+         <p>There are two algorithms built into stblfit.  The first, 
+'ecf', is based on empirical characteristic function methods of 
+            Koutrouvelis ([IAKa] &amp; [IAKb]).  This method is the 
+default.  The other method, 'percentile', is the simplier, faster but
+            less accurate method of McCulloch [JHM]. These two methods 
+are called as
+         </p><pre> stblfit(X,'ecf')        -  Koutrouvelis's method
+ stblfit(X,'percentile') -  McCulloch's method</pre><p>STBLFIT also accepts an options structure created with the STATSET command.  This gives you control over the iterative procedure
+            in the 'ecf' method.  This options stucture must appear as the last argument of STBLFIT.  Availiable options are
+         </p>
+         <p>'Display' - When set to 'iter', will display the values of                   alpha,beta,gamma and delta in each          
+                    iteration.  Default is 'off'.
+         </p>
+         <p>'MaxIter' - Specifies the maximum number of iterations allowed in                   estimation. Default is 5.</p>
+         <p>'TolX'    - Specifies threshold to stop iterations. Default is                   0.01.</p>
+         <p>For an example on the use of STBLFIT, see the example below.</p>
+         <h2>Example: Investigate the distribution of a sum of Pareto random variables<a name="15"></a></h2>
+         <p>Consider the random variable <img src="alphastablepub_fichiers/alphastablepub_eq03598.png" alt="$X$"> whose CDF is given by
+         </p>
+         <p><img src="alphastablepub_fichiers/alphastablepub_eq62628.png" alt="$\mathrm{Prob}[X \leq x] = 1 - x^{-3/4}, \quad x \geq 1$"></p>
+         <p>and is <img src="alphastablepub_fichiers/alphastablepub_eq12896.png" alt="$0$"> otherwise.  We can sample from this distribution easily, as the CDF above can be inverted to give
+         </p>
+         <p><img src="alphastablepub_fichiers/alphastablepub_eq00884.png" alt="$X = u^{-4/3}, \quad \mathrm{where} \ u \sim U(0,1)$">.
+         </p>
+         <p>From the tail of the CDF, it is clear that X has an infinite mean, hence we do not expect the central limit to apply here.
+             However, consider the scaled sum
+         </p>
+         <p><img src="alphastablepub_fichiers/alphastablepub_eq31599.png" alt="$X^{\star n} = n^{-4/3} \sum_{i=1}^n X_i$"></p>
+         <p>where <img src="alphastablepub_fichiers/alphastablepub_eq36188.png" alt="$X_i$"> are independent samples of <img src="alphastablepub_fichiers/alphastablepub_eq03598.png" alt="$X$">. By using the characteristic function of <img src="alphastablepub_fichiers/alphastablepub_eq03598.png" alt="$X$">, one can show that this sum converges in distribution to an alpha-stable distribution <img src="alphastablepub_fichiers/alphastablepub_eq30978.png" alt="$S(\alpha_0,\beta_0,\gamma_0,\delta_0)$">, (we'll give exact values of these parameters later).
+         </p>
+         <p>To verify this, lets create a sample from <img src="alphastablepub_fichiers/alphastablepub_eq06456.png" alt="$X^{\star n}$"> for <img src="alphastablepub_fichiers/alphastablepub_eq25947.png" alt="$n$"> large, and use STBLFIT to estimate these parameters to see if a stable distribution seems like the right fit.
+         </p>
+         <p>The following code generates 100 samples of <img src="alphastablepub_fichiers/alphastablepub_eq03598.png" alt="$X$">, then adds them and divides by <img src="alphastablepub_fichiers/alphastablepub_eq06155.png" alt="$100^{-4/3}$"> to generate sample <img src="alphastablepub_fichiers/alphastablepub_eq47404.png" alt="$X_i^{\star 100}$">.  This is repeated 300 times to get a sample <img src="alphastablepub_fichiers/alphastablepub_eq47404.png" alt="$X_i^{\star 100}$">, i=1,...300.  Next, stblfit is used to estimate the parameters <img src="alphastablepub_fichiers/alphastablepub_eq10983.png" alt="$\alpha_0,\beta_0,\gamma_0$"> and <img src="alphastablepub_fichiers/alphastablepub_eq23765.png" alt="$\delta_0$">.
+         </p><pre class="codeinput">N = 300;
+sampsize = 100;
+s = RandStream.create(<span class="string">'mrg32k3a'</span>,<span class="string">'NumStreams'</span>,1,<span class="string">'Seed'</span>,50); <span class="comment">% For reproducibility</span>
+X = zeros(N,1);
+<span class="keyword">for</span> i = 1:N
+    <span class="comment">% Generate a normalized sum of Pareto-type random variables</span>
+    Samp = 1./rand(s,sampsize,1).^(4/3);
+    X(i) = sum(Samp)/sampsize^(4/3); <span class="comment">% Normalize sum</span>
+<span class="keyword">end</span>
+<span class="comment">% estimate parameters</span>
+p = stblfit(X,<span class="string">'ecf'</span>,statset(<span class="string">'Display'</span>,<span class="string">'iter'</span>));
+<span class="comment">% plot data with fit parameters</span>
+xmax = 15;
+H = figure(1);
+set(H,<span class="string">'Position'</span>, [517 626 939 410]);
+clf;
+title(<span class="string">'Stable fit to sums of Pareto random variables'</span>);
+subplot(1,2,1)
+hold <span class="string">on</span>
+stem(X(X &lt; xmax),stblpdf(X(X&lt;xmax),p(1),p(2),p(3),p(4),<span class="string">'quick'</span>));
+x = 0:.1:xmax;
+plot(x,stblpdf(x,p(1),p(2),p(3),p(4),<span class="string">'quick'</span>),<span class="string">'r-'</span>)
+hold <span class="string">off</span>
+xlabel([<span class="string">'\alpha_0 = '</span>,num2str(p(1)),<span class="string">'  \beta_0 = '</span>,num2str(p(2)),<span class="string">'  \gamma_0 = '</span>,num2str(p(3)),<span class="string">'  \delta_0 = '</span>,num2str(p(4))]);
+legend(<span class="string">'Data'</span>,<span class="string">'Fit stable density'</span>)
+subplot(1,2,2)
+CDF = prctile(X,[1:75]);
+cmin = CDF(1);
+cmax = CDF(end);
+x = cmin:.1:cmax;
+estCDF = stblcdf(x,p(1),p(2),p(3),p(4));
+plot(CDF,[.01:.01:.75],<span class="string">'b.'</span>,x,estCDF,<span class="string">'r-'</span>)
+legend(<span class="string">'Empirical CDF'</span>,<span class="string">'Estimated CDF'</span>,<span class="string">'Location'</span>,<span class="string">'northwest'</span>)
+</pre><pre class="codeoutput">    iteration	    alpha	    beta	  gamma		  delta
+       0	      0.655308	       1	 1.10274	 1.69911
+       1	      0.638528	  1.0271	 1.65565	0.636399
+       2	      0.735853	0.953656	 1.59847	-0.107348
+       3	      0.746854	0.962963	 1.59705	-0.311888
+       4	      0.747544	0.966093	 1.59615	-0.338053
+</pre><img src="alphastablepub_fichiers/alphastablepub_09.png" alt="" hspace="5" vspace="5"> <p>With a little bit of work, one can show that in the limit of an infinite sum, the true values of <img src="alphastablepub_fichiers/alphastablepub_eq10983.png" alt="$\alpha_0,\beta_0,\gamma_0$"> and <img src="alphastablepub_fichiers/alphastablepub_eq23765.png" alt="$\delta_0$"> are given by
+         </p>
+         <p><img src="alphastablepub_fichiers/alphastablepub_eq03894.png" alt="$\alpha_0 = 3/4$">, <img src="alphastablepub_fichiers/alphastablepub_eq40208.png" alt="$\beta_0 = 1$">, <img src="alphastablepub_fichiers/alphastablepub_eq41519.png" alt="$\gamma_0 = ( \cos( 3 \pi/8) \Gamma(1/4) )^{4/3} \approx  1.5475$">, <img src="alphastablepub_fichiers/alphastablepub_eq61230.png" alt="$\delta_0 = 0$">,
+         </p>
+         <p>Of course, we expect some bias in our estimates since we are using a sum of 100 independent samples, but you can see that
+            our estimates are good, and the location of the data seems to follow the shape of the plotted density and CDF.
+         </p>
+         <h2>References<a name="17"></a></h2>
+         <p>[CMS] J.M. Chambers, C.L. Mallows and B.W. Stuck (1976)     "A Method for Simulating Stable Random Variables"     JASA, Vol.
+            71, No. 354. pages 340-344
+         </p>
+         <p>[IAKa] I. A. Koutrouvelis (1980)       "Rregression-Type Estimation of the Paramters of Stable Laws.       JASA, Vol 75, No.
+            372
+         </p>
+         <p>[IAKb] I. A. Koutrouvelis (1981)       "An Iterative Procedure for the estimation of the Parameters of       Stable Laws"
+                  Commun. Stat. - Simul. Comput. 10(1), pages 17-28
+         </p>
+         <p>[JHM] J. H. McCulloch (1986)       "Simple Consistent Estimators of Stable Distribution Parameters"       Cummun. Stat. Simul.
+            Comput. 15(4)
+         </p>
+         <p>[JPN] J. P. Nolan (1997)     "Numerical Calculation of Stable Densities and Distribution     Functions"  Commun. Statist.
+            - Stochastic Modles, 13(4), 759-774
+         </p>
+         <p>[ST] G Samorodnitsky, MS Taqqu (1994)     "Stable non-Gaussian random processes: stochastic models with      infinite variance"
+             CRC Press
+         </p>
+         <p>[WW] Aleksander Weron and Rafal Weron (1995)     "Computer Simulation of Levy alpha-Stable Variables and Processes"     Lec.
+            Notes in Physics, 457, pages 379-392
+         </p>
+         <p class="footer"><br>
+            Published with MATLAB® 7.7<br></p>
+      </div>
+      <!--
+##### SOURCE BEGIN #####
+%% Alpha-Stable distributions in MATLAB
+%
+% The following gives a brief introduction to the Levy alpha-stable
+% distribtuion and some MATLAB functions I've written pertaining to this
+% distribtuion.  There are several issues 
+% which make dealing with these distribtuions difficult, including infinite
+% means and variances, and the fact that the pdf or cdf cannot be written 
+% in closed form.
+%
+% MATLAB does not currently have built-in support for this distribution, but there is 
+% third party software which has several well-developed methods. This
+% software is not free (in general). Information can be found 
+% <http://www.mathworks.com/products/connections/product_detail/product_35730.html here>.
+% 
+% Alpha-stable distributions arise naturally in the study of
+% heavy-tailed distribtuions, and have found applications in 
+% economics and physics as models of rare, but extreme events (such as
+% earthquakes or stock market crashes).  I expect these models to grow in
+% popularity since many believe that some of our recent financial
+% troubles happend because analysts limited themselves to 
+% Gaussian models (which do not have heavy tails).  
+%
+% We'll start with some background about alpha-stable
+% distributions, and then go through the functions I've written.  
+% An excellent introduction to these distributions is 
+% [ST].    
+%
+%
+%% Note on Parameterization
+%
+% One of the most frustrating issues in dealing with alpha-stable
+% distribtuions is that its parameterization is not consistent across the
+% literature (there are over half a dozen parameterizations).  The
+% parameterization we choose here is consistent with G Samorodnitsky's  
+% and MS Taqqu's 1994 book.  The most common way to 
+% specify a parameterization is to look at the characteristic function of 
+% the alpha-stable random variable, which we do in the next section.
+%
+% One further annoyance is that the _names_ of the 4 parameters are also
+% inconsistent.  We choose the letters
+% $\alpha,\beta,\gamma$, and $\delta$.  The letters $\alpha$ and $\beta$  
+% are used almost everywhere you look, while the other two 
+% parameters are almost _always_ different.  We chose $\gamma$ and 
+% $\delta$ as opposed to the popular $\sigma$ and $\mu$ since these two
+% letters usually mean standard deviation and mean (which is not  
+% accurate in the case of stable distributions).
+%
+% NOTE: Because MATLAB interprets "gamma" as the gamma function (which is
+% used to compute the pdf an alpha-stable dist.), we use "gam" in the code
+% instead.
+%
+%
+%% Introduction to the alpha-stable distribution
+%
+% The alpha-stable distribution is a four-parameter family of distributions
+% and is (usually) denoted by $S(\alpha,\beta,\gamma,\delta)$.  The first parameter
+% $\alpha \in (0,2]$ is
+% called the _characteristic exponent_, and describes the tail of the
+% distribution.  The second, $\beta \in [-1,1]$ is the _skewness_, and as the name
+% implies, specifies if the distribution is right- ($\beta > 0$) or left-
+% ($\beta < 0$) skewed.  The last two parameters are the
+% _scale_, $\gamma > 0$, and the _location_ $\delta \in R$.  One can think of these two as
+% being similar to the variance and mean in the normal distribution in the following
+% sense - if $Z \sim S(\alpha,\beta,1,0)$, then if $\alpha \neq 1$,  
+% $\gamma Z + \delta \sim S(\alpha,\beta,\gamma,\delta)$.  The variable $Z$ is usually 
+% called a _standard_ alpha-stable random variable (but keep in mind the word "standard"
+% depends on the choice of parameterization!).
+% 
+% The family of alpha-stable distributions is a rich class, and includes
+% the following distributions as subclasses:
+% 
+% (1) The Gaussian distribution $N(\mu,\sigma^2)$
+% is given by $S(2,\beta,\frac{\sigma}{\sqrt{2}},\mu)$.  Notice $\beta$   
+% does not matter in this case.
+%
+% (2) The <http://en.wikipedia.org/wiki/Cauchy_distribution Cauchy distribution> 
+% with scale $\gamma$ and location $\delta$ is given by
+% $S(1,0,\gamma,\delta)$.
+%
+% (3) The <http://en.wikipedia.org/wiki/Levy_distribution Levy distribution>
+% (a.k.a Inverse-Gaussian or Pearson V), with scale $\gamma$ and location $\delta$ 
+% is given by $S(1/2,1,\gamma,\delta)$. 
+%
+% With the exception of the above 3 cases, the density function of an
+% alpha-stable random variable cannot be given in closed form.  However,
+% the characteristic function can always be given. Let $X \sim
+% S(\alpha,\beta,\gamma,\delta)$.
+% The parameterization we
+% use here corresponds to the following form of the characteristic
+% function.  For $\alpha \neq 1$, we have 
+%
+% $\phi(t) = E \exp(i t X) = \exp\left( -\gamma^\alpha |t|^\alpha [
+% 1 - i \beta sign(t) \tan(\frac{\pi \alpha}{2} )] + i \delta t \right)$. 
+%
+% and for $\alpha = 1$,
+%
+% $\phi(t) = E \exp(i t X) = \exp \left( - \gamma |t| (1 + i \beta sign(t)
+% \frac{2}{\pi} \log|t| ) + i \delta t \right)$.
+%
+% One of the nicest properties of alpha-stable distribution is that they generalize
+% the classical central limit theorem.  Recall that if $X,X_1,X_2,\dots$ form
+% a sequence of i.i.d. random variables with finite
+% variance, then the quantity
+%
+% $\frac{ \sum_{i=1}^n X_i - EX}{ \sqrt{ var(X) n} }$
+%
+% converges in distribution to a standard normal random variable as $n \rightarrow \infty$, which we
+% saw above is the same as $S(2,0,\frac{1}{\sqrt{2}},0)$.  Now, if you remove
+% the assumption that the $X$'s have finite variance, but can still find a
+% sequence of normalizing factors $a_n$ and $b_n$ such that 
+%
+% $\frac{ \sum_{i=1}^n X_i - a_n}{ b_n }$
+%
+% converges in distribution to some non-degenerate random variable $Y$,
+%  then $Y$ must live in the family
+% of alpha-stable distributions!  For an example of this, see the
+% example section below.
+%
+% This is a reason many think these distributions should be used in models of stock
+% prices.  If you view the price of a stock as a accumulation of jumps,
+% and if you assume these jumps are appoximately i.i.d. and come from a heavy-tailed distribution
+% (with infinite variance) then this result says you should expect
+% the limiting behavior of the stock price to have an alpha-stable
+% law (this is a bit of an over simplification, but hopefully you
+% get the idea of how these distributions can arise "naturally").
+%
+%
+%% STBLRND
+% STBLERND generates random numbers form the Levy alpha-stable
+% distribution.  This function is called in any one of the following ways:
+%
+%   X = stblrnd(alpha,beta,gamma,delta) % Generates a single S(alpha,beta,gamma,delta) random variable.
+%   X = stblrnd(alpha,beta,gamma,delta,M) %Generates an M by M matrix of S(alpha,beta,gamma,delta) random variables.  
+%   X = stblrnd(alpha,beta,gamma,delta,M,N,..) %Generates an M by N by.. array of S(alpha,beta,gamma,delta) random variables .
+%   X = stblrnd(alpha,beta,gamma,delta,[M,N,..]) %Generates an M by N by..array of S(alpha,beta,gamma,delta) random variables .
+%
+%%
+% The inputs alpha,beta,gamma and delta must be scalars and lie in their
+% appropriate ranges.  If the parameter choice corresponds to a special
+% distribution (Gaussian, Cauchy, Levy), then a faster method is used.
+%
+% The algorithm used in STBLRND is based on the methods found in 
+% [CMS] and [WW].
+%
+%%
+% Example: Generate 1000 random samples from the symmetric alpha-stable
+% distribution with $\alpha = 1.5,$ and make a histogram
+X = stblrnd(1.5,0,1,0,1000,1);
+hist(X)
+%%
+% What you (probably) see is characteristic of stable
+% distributions, and is the reason they are useful.  We see here a lot of
+% samples falling near the origin, and a few rare samples which are large in magnitude.
+
+
+%% STBLPDF
+% STBLPDF computes the pdf of the alpha-stable distribution.  This function
+% is called as
+% 
+%    p = stblpdf(x,alpha,beta,gamma,delta)  % Computes the pdf of the S(alpha,beta,gamma,delta) distribution at the values in x.
+%
+% x can be any sized array, and alpha,beta,gamma and delta must be scalars.
+% The output p is the same size as x
+%
+% STBLEPDF also accepts one or both of the following options
+%
+%    p = stblpdf(x,alpha,beta,gamma,delta,'quick') % Uses a faster, but less accurate algorithm.  Useful for plotting.
+%    p = stblpdf(x,alpha,beta,gamma,delta,TOL)  % Computes the pdf using an absolute error tolerance of TOL.
+%
+% By default, stblpdf uses a TOL of 1e-12 for the full algorithm, and 1e-6
+% for the 'quick' algorithm.
+%
+% The algorithm for stblpdf comes down to computing the numerical integrals 
+% found in [JPN].
+% In this code, I used MATLAB's QUADV function, which is vectorized
+% quadrature.  It is very fast and does an excellent job.  For large
+% values of x, the integrand we must compute is mostly zero, except for a very thin
+% peak, which QUADV might miss.  To avoid
+% this, the full algorithm locates this peak using a bisection method, and
+% then calls QUADV twice, once to compute to left of the peak, and once
+% to compute to the right of the peak.  The 'quick' algorithm skips the
+% step of locationg the peak and only calls QUADV once.
+%
+%
+% Example 1:  Plot alpha-stable densities
+figure(1)
+x = -5:.01:5;
+beta = 0;
+gam = 1;
+delta = 0;
+plot( x , stblpdf(x,.5,beta,gam,delta,'quick'),...
+  x , stblpdf(x,.75,beta,gam,delta,'quick'),...
+  x , stblpdf(x,1,beta,gam,delta,'quick'),...
+  x , stblpdf(x,1.25,beta,gam,delta,'quick'),...
+  x , stblpdf(x,1.5,beta,gam,delta,'quick') )
+axis([-5 5 0 .7]);
+title('Symmetric \alpha-stable densities, \beta = 0, \gamma = 1, \delta = 0');
+legend('\alpha = 0.5',...
+    '\alpha = 0.75',...
+    '\alpha = 1.0',...
+    '\alpha = 1.25',...
+    '\alpha = 1.5' )
+
+
+
+figure(2)
+x = -5:.01:5;
+beta = 1;
+gam = 1;
+delta = 0;
+plot( x , stblpdf(x,.5,beta,gam,delta,'quick'),...
+  x , stblpdf(x,.75,beta,gam,delta,'quick'),...
+  x , stblpdf(x,1,beta,gam,delta,'quick'),...
+  x , stblpdf(x,1.25,beta,gam,delta,'quick'),...
+  x , stblpdf(x,1.5,beta,gam,delta,'quick') )
+axis([-5 5 0 .6]);
+title('Skewed \alpha-stable densities, \beta = 0.5,\gamma = 1, \delta = 0');
+legend('\alpha = 0.5',...
+    '\alpha = 0.75',...
+    '\alpha = 1.0',...
+    '\alpha = 1.25',...
+    '\alpha = 1.5' )
+
+%%
+% Example 2: Check accuracy for large x.  Eventually, the 'quick' option
+% will fail to give a good result.  The red dashed line in the plot below is a known,
+% closed form asymptotic approximation which is only valid for large x.
+
+x = 10.^(-2:.25:7);
+alpha = 1.5;
+beta = 0;
+gam = 1;
+delta = 0;
+C = (1 - alpha)/(gamma(2 - alpha)*cos(pi*alpha/2));
+loglog( x , stblpdf( x,alpha,beta,gam,delta,'quick'), 'g-*', ...
+        x , stblpdf( x,alpha,beta,gam,delta),         'b-o', ...
+        x , C/2 * alpha * x.^(-alpha - 1),            'rREPLACE_WITH_DASH_DASH')
+legend('quick','full', 'asymptotic formula')
+title('Comparison of "quick" option to full algorithm for large x' )
+
+%%
+% We see the 'quick' option matches the full algorithm out until x ~ 10^5,
+% then it starts to grossly underestimate the pdf.  Meanwhile, the full
+% algorithm continues to do an excellent job well into the tails of the
+% pdf.
+
+%% STBLCDF
+% STBLCDF computes the cdf of the alpha-stable distribution.  This function
+% is called as
+% 
+%    F = stblcdf(x,alpha,beta,gamma,delta)  % Computes the cdf of the S(alpha,beta,gamma,delta) distribution at the values in x.
+%
+% x can be any sized array, and alpha,beta,gamma and delta must be scalars.
+% The output F is the same size as x
+%
+% STBLECDF also accepts the following option
+%
+%    p = stblcdf(x,alpha,beta,gamma,delta,TOL)  % Computes the cdf using an absolute error tolerance of TOL.
+%
+% The default for TOL is 1e-8.
+%
+% Similar to STBLPDF, the algorithm for STBLCDF comes down to computing
+% the integrals found in [JPN].  Again, MATLAB's QUADV function was used
+% for this.  to avoid numerical instabilities in the integrand, I truncated
+% the endpoint of the integrand slightly.  
+%
+% Example:  Plot alpha-stable cdfs
+figure(3)
+x = -5:.01:5;
+  beta = 0;
+  gam = 1;
+  delta = 0;
+  plot(x,  stblcdf(x,.1,beta,gam,delta),... 
+      x , stblcdf(x,.5,beta,gam,delta),...
+      x , stblcdf(x,.75,beta,gam,delta),...
+      x , stblcdf(x,1,beta,gam,delta),...
+      x , stblcdf(x,1.25,beta,gam,delta),...
+      x , stblcdf(x,1.5,beta,gam,delta) )
+ axis([-5 5 0 1]);
+ title('Symmetric \alpha-stable CDFs, \beta = 0, \gamma = 1, \delta = 0');
+ legend('\alpha = 0.1',...
+        '\alpha = 0.5',...
+        '\alpha = 0.75',...
+        '\alpha = 1.0',...
+        '\alpha = 1.25',...
+        '\alpha = 1.5',...
+        'Location','northwest');
+
+
+figure(4)
+  x = -5:.01:5;
+  beta = .5;
+  gam = 1;
+  delta = 0;
+  quick = true;
+  plot( x,  stblcdf(x,.1,beta,gam,delta),...
+        x , stblcdf(x,.5,beta,gam,delta),...
+      x , stblcdf(x,.75,beta,gam,delta),...
+      x , stblcdf(x,1,beta,gam,delta),...
+      x , stblcdf(x,1.25,beta,gam,delta),...
+      x , stblcdf(x,1.5,beta,gam,delta) )
+ axis([-5 5 0 1]);
+ title('Skewed \alpha-stable CDFs, \beta = 0.5, \gamma = 1, \delta = 0');
+ legend('\alpha = 0.1',...
+        '\alpha = 0.5',...
+        '\alpha = 0.75',...
+        '\alpha = 1.0',...
+        '\alpha = 1.25',...
+        '\alpha = 1.5',...
+        'Location','northwest');
+
+
+
+%% STBLINV
+% STBLINV computes the inverse alpha-stable CDF.  This function is called
+% as
+%
+%    X = stblinv(u,alpha,beta,gam,delta)
+%
+% u can be any sized array, and alpha,beta,gam and delta must be scalars.
+% The output x will be the same size as u.  
+% 
+% The algorithm used to compute stblinv is one that I cooked up - it uses
+% a combination of Newton's method and the bisection method, together with
+% the functions stblcdf and stblpdf, to solve the equation F(X) = U for X,
+% where F is the cdf of an alpha-stable distribution.  For starting values,
+% I calculated a large table of exact values for 
+% .1 < alpha < 2, 0<=beta <= 1 and .1 < u < .9.  For u outside the range
+% .1<u<.9, I used the asymptotic expression for the cdf.   
+%
+% 
+%%
+% Example 1: Plot some alpha-stable inverse cdf's
+figure(4)
+u = .01:.01:.99;
+  beta = 0;
+  gam = 1;
+  delta = 0;
+  plot(u , stblinv(u,.5,beta,gam,delta),...
+      u , stblinv(u,.75,beta,gam,delta),...
+      u , stblinv(u,1,beta,gam,delta),...
+      u , stblinv(u,1.25,beta,gam,delta),...
+      u , stblinv(u,1.5,beta,gam,delta) )
+ axis([0 1 -2 2]);
+ title('Symmetric inverse \alpha-stable CDFs, \beta = 0, \gamma = 1, \delta = 0');
+ legend('\alpha = 0.5',...
+        '\alpha = 0.75',...
+        '\alpha = 1.0',...
+        '\alpha = 1.25',...
+        '\alpha = 1.5',...
+        'Location','northwest');
+
+
+figure(5)
+u = .01:.01:.99;
+  beta = .5;
+  gam = 1;
+  delta = 0;
+  plot( u , stblinv(u,.5,beta,gam,delta),...
+      u , stblinv(u,.75,beta,gam,delta),...
+      u , stblinv(u,1,beta,gam,delta),...
+      u , stblinv(u,1.25,beta,gam,delta),...
+      u , stblinv(u,1.5,beta,gam,delta) )
+ axis([0 1 -2 2]);
+ title('Skewed inverse \alpha-stable CDFs, \beta = .5, \gamma = 1, \delta = 0');
+ legend( '\alpha = 0.5',...
+        '\alpha = 0.75',...
+        '\alpha = 1.0',...
+        '\alpha = 1.25',...
+        '\alpha = 1.5',...
+        'Location','northwest');
+
+%%
+% Example 2: Check that we really are inverting the alpha-stable CDF
+
+u = [.01:.01:.99];
+alpha = 1.5;
+beta = .5;
+gam = 1;
+delta = 0;
+w = stblcdf( stblinv( u,alpha,beta,gam,delta),alpha,beta,gam,delta) % This should return u.
+check = all( abs(w-u) < 1e-6 )
+
+%% STBLFIT
+% STBLFIT fits an alpha-stable distribution to a data set.  The function is
+% called as
+%
+%   p = stblfit(X)
+%
+% where X is the data set to which you want to fit a stable distribution.  
+% The output p will be a column vector containing the 4 parameters. 
+%
+% There are two algorithms built into stblfit.  The first, 'ecf', is based on
+% empirical characteristic function methods of  Koutrouvelis ([IAKa] &
+% [IAKb]).  This method is the default.  The other method, 'percentile', is the
+% simplier, faster but less accurate method of McCulloch [JHM].  
+% These two methods are called as
+%   
+%   stblfit(X,'ecf')        -  Koutrouvelis's method
+%   stblfit(X,'percentile') -  McCulloch's method
+%
+% STBLFIT also accepts an options structure created with the STATSET
+% command.  This gives you control over the iterative procedure in the 'ecf'
+% method.  This options stucture must appear as the last argument of 
+% STBLFIT.  Availiable options are
+%
+% 'Display' - When set to 'iter', will display the values of 
+%                   alpha,beta,gamma and delta in each
+%                   iteration.  Default is 'off'.
+%
+% 'MaxIter' - Specifies the maximum number of iterations allowed in
+%                   estimation. Default is 5.
+%
+% 'TolX'    - Specifies threshold to stop iterations. Default is
+%                   0.01.
+%
+% For an example on the use of STBLFIT, see the example below.
+%
+%
+%% Example: Investigate the distribution of a sum of Pareto random variables
+%
+% Consider the random variable $X$ whose CDF is given by
+%
+% $\mathrm{Prob}[X \leq x] = 1 - x^{-3/4}, \quad x \geq 1$
+%
+% and is $0$ otherwise.  We can sample from this distribution easily, as the
+% CDF above can be inverted to give
+%
+% $X = u^{-4/3}, \quad \mathrm{where} \ u \sim U(0,1)$.
+%
+% From the tail of the CDF, it is clear that X has an infinite mean,
+% hence we do not expect the central limit to apply here.  However, consider
+% the scaled sum 
+%
+% $X^{\star n} = n^{-4/3} \sum_{i=1}^n X_i$
+%
+% where $X_i$ are independent samples of $X$. By using the
+% characteristic function of $X$, one can show that this sum converges in distribution
+% to an alpha-stable distribution $S(\alpha_0,\beta_0,\gamma_0,\delta_0)$,
+% (we'll give exact values of these parameters later).
+%
+% To verify this, lets create a sample from $X^{\star n}$ for $n$ large, and use STBLFIT
+% to estimate these parameters to see if a stable distribution seems like
+% the right fit.  
+%
+% The following code generates 100 samples of $X$, then
+% adds them and divides by $100^{-4/3}$ to generate sample
+% $X_i^{\star 100}$.  This is repeated 300 times to get a sample
+% $X_i^{\star 100}$, i=1,...300.  Next, stblfit is used to estimate the
+% parameters $\alpha_0,\beta_0,\gamma_0$ and $\delta_0$.
+
+
+N = 300;
+sampsize = 100;
+s = RandStream.create('mrg32k3a','NumStreams',1,'Seed',50); % For reproducibility
+X = zeros(N,1);
+for i = 1:N
+    % Generate a normalized sum of Pareto-type random variables
+    Samp = 1./rand(s,sampsize,1).^(4/3);
+    X(i) = sum(Samp)/sampsize^(4/3); % Normalize sum
+end
+% estimate parameters 
+p = stblfit(X,'ecf',statset('Display','iter'));
+% plot data with fit parameters
+xmax = 15;
+H = figure(1);
+set(H,'Position', [517 626 939 410]);
+clf;
+title('Stable fit to sums of Pareto random variables');
+subplot(1,2,1)
+hold on
+stem(X(X < xmax),stblpdf(X(X<xmax),p(1),p(2),p(3),p(4),'quick'));
+x = 0:.1:xmax;
+plot(x,stblpdf(x,p(1),p(2),p(3),p(4),'quick'),'r-')
+hold off
+xlabel(['\alpha_0 = ',num2str(p(1)),'  \beta_0 = ',num2str(p(2)),'  \gamma_0 = ',num2str(p(3)),'  \delta_0 = ',num2str(p(4))]);
+legend('Data','Fit stable density')
+subplot(1,2,2)
+CDF = prctile(X,[1:75]);
+cmin = CDF(1);
+cmax = CDF(end);
+x = cmin:.1:cmax;
+estCDF = stblcdf(x,p(1),p(2),p(3),p(4));
+plot(CDF,[.01:.01:.75],'b.',x,estCDF,'r-')
+legend('Empirical CDF','Estimated CDF','Location','northwest')
+
+%% 
+% With a little bit of work, one can show that in the limit of an infinite
+% sum, the true values of $\alpha_0,\beta_0,\gamma_0$ and $\delta_0$ are
+% given by
+%
+% $\alpha_0 = 3/4$,
+% $\beta_0 = 1$,
+% $\gamma_0 = ( \cos( 3 \pi/8) \Gamma(1/4) )^{4/3} \approx  1.5475$,
+% $\delta_0 = 0$,
+%
+% Of course, we expect some bias in our estimates since we are using a sum
+% of 100 independent samples, but you can see that our estimates are good, and 
+% the location of the data seems to follow the shape of the plotted density and CDF.
+%
+
+%% References
+% [CMS] J.M. Chambers, C.L. Mallows and B.W. Stuck (1976) 
+%     "A Method for Simulating Stable Random Variables"  
+%     JASA, Vol. 71, No. 354. pages 340-344  
+%
+% [IAKa] I. A. Koutrouvelis (1980)
+%       "Rregression-Type Estimation of the Paramters of Stable Laws.
+%       JASA, Vol 75, No. 372
+%
+% [IAKb] I. A. Koutrouvelis (1981)
+%       "An Iterative Procedure for the estimation of the Parameters of
+%       Stable Laws"
+%       Commun. Stat. - Simul. Comput. 10(1), pages 17-28
+%
+% [JHM] J. H. McCulloch (1986)
+%       "Simple Consistent Estimators of Stable Distribution Parameters"
+%       Cummun. Stat. Simul. Comput. 15(4)
+%
+% [JPN] J. P. Nolan (1997)
+%     "Numerical Calculation of Stable Densities and Distribution
+%     Functions"  Commun. Statist. - Stochastic Modles, 13(4), 759-774
+%
+% [ST] G Samorodnitsky, MS Taqqu (1994)
+%     "Stable non-Gaussian random processes: stochastic models with 
+%      infinite variance"  CRC Press
+%
+% [WW] Aleksander Weron and Rafal Weron (1995)
+%     "Computer Simulation of Levy alpha-Stable Variables and Processes" 
+%     Lec. Notes in Physics, 457, pages 379-392
+%
+%
+%
+%
+%
+%
+
+##### SOURCE END #####
+-->
+   </body></html>
